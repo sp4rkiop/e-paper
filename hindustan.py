@@ -1,54 +1,67 @@
 import datetime
 import requests
-import img2pdf
 from io import BytesIO
+import img2pdf
 
-# Define the API URL
-today = datetime.date.today()
-api_url = "https://epaper.livehindustan.com/Home/GetAllpages?editionid=1010&editiondate="+today.strftime("%d/%m/%Y")
-page_height=None
-page_width=None
-# Define a function to fetch JSON data from the API
-def fetch_api_data(url):
-    response = requests.get(url)
-    global page_height,page_width
-    if response.status_code == 200:
+def fetch_api_data(api_url):
+    """Fetch JSON data from the API."""
+    try:
+        response = requests.get(api_url)
+        response.raise_for_status()  # Raise an error for bad responses
         page_height = response.json()[0].get("PageHeight")
         page_width = response.json()[0].get("PageWidth")
-        return response.json()
-    return None
+        return response.json(), page_height, page_width
+    except requests.RequestException as e:
+        print(f"Error fetching API data: {e}")
+        return None, None, None
 
-# Define a function to download an image from a URL
-def download_image(url):
-    response = requests.get(url)
-    if response.status_code == 200:
+def download_image(image_url):
+    """Download an image from a URL and return it as BytesIO."""
+    try:
+        response = requests.get(image_url)
+        response.raise_for_status()  # Raise an error for bad responses
         return BytesIO(response.content)
-    return None
+    except requests.RequestException as e:
+        print(f"Error downloading image: {e}")
+        return None
 
-# Fetch the JSON data from the API
-api_data = fetch_api_data(api_url)
+def create_pdf(image_data, page_width, page_height, pdf_filename):
+    """Create a PDF from the given image data."""
+    try:
+        with open(pdf_filename, "wb") as pdf_file:
+            pdf_file.write(img2pdf.convert(image_data, layout_fun=img2pdf.get_layout_fun((page_width, page_height))))
+        print(f"PDF created: {pdf_filename}")
+    except Exception as e:
+        print(f"Error creating PDF: {e}")
 
-# Create a list to store image data
-image_data = []
+def main():
+    """Main function to fetch data, download images, and create a PDF."""
+    today = datetime.date.today()
+    api_url = f"https://epaper.livehindustan.com/Home/GetAllpages?editionid=1010&editiondate={today.strftime('%d/%m/%Y')}"
 
-if api_data and isinstance(api_data, list):
+    api_data, page_height, page_width = fetch_api_data(api_url)
+    
+    if not api_data:
+        print("No data fetched from API.")
+        return
+
+    image_data = []
     for item in api_data:
-        # img_url = item.get("XHighResolution")
         img_base_url = item.get("XHighResolution")[:item.get("XHighResolution").rfind("/")+1]
         image_name = item.get("FileName")[:item.get("FileName").rfind(".")]
-        img_final_url = img_base_url + image_name + ".jpg"
+        img_final_url = f"{img_base_url}{image_name}.jpg"
+        
         if img_final_url:
             image = download_image(img_final_url)
             if image:
                 image_data.append(image)
 
-# Create a PDF using img2pdf
-pdf_filename = "Hindustan-Dhanbad.pdf"
+    if not image_data:
+        print("No images downloaded to create a PDF.")
+        return
 
-if image_data:
-    with open(pdf_filename, "wb") as pdf_file:
-        pdf_file.write(img2pdf.convert(image_data, layout_fun=img2pdf.get_layout_fun((page_width, page_height))))
+    pdf_filename = "Hindustan-Dhanbad.pdf"
+    create_pdf(image_data, page_width, page_height, pdf_filename)
 
-    print(f"PDF created: {pdf_filename}")
-else:
-    print("No image data to create a PDF.")
+if __name__ == "__main__":
+    main()
