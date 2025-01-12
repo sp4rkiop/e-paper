@@ -53,5 +53,6 @@ jobs:
       with:
         tag: ${{ env.TAG_NAME }}
         allowUpdates: true
+        body: "Automated release for ${{ env.TAG_NAME }}"
         artifacts: "Hindustan-Dhanbad.pdf"
         artifactContentType: "application/pdf"
