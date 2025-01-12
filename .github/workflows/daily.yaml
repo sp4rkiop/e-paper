@@ -42,18 +42,11 @@ jobs:
         name: hindustan-pdf
         path: Hindustan-Dhanbad.pdf
 
-    - name: Create release
-      uses: actions/create-release@v1
+    - name: Create release and upload PDF
+      uses: ncipollo/release-action@v1
       with:
-        tag_name: $(date +'%Y-%m-%d')
-        release_name: $(date +'%Y-%m-%d')
-        draft: false
-        prerelease: false
-
-    - name: Upload PDF as release asset
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: Hindustan-Dhanbad.pdf
-        asset_name: Hindustan-Dhanbad.pdf
-        asset_content_type: application/pdf
+        allowUpdates: true
+        artifacts: "Hindustan-Dhanbad.pdf"
+        artifactContentType: "application/pdf"
+        tag: ${{ github.event.schedule ? format('yyyy-MM-dd', github.event.date) : format('yyyy-MM-dd', github.event.date) }}
+        releaseName: ${{ github.event.schedule ? format('yyyy-MM-dd', github.event.date) : format('yyyy-MM-dd', github.event.date) }}
