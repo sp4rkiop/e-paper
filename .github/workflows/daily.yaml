@@ -45,8 +45,8 @@ jobs:
     - name: Create release and upload PDF
       uses: ncipollo/release-action@v1
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        tag: $(date +'%Y-%m-%d')
         allowUpdates: true
         artifacts: "Hindustan-Dhanbad.pdf"
         artifactContentType: "application/pdf"
-        tag: $(date +'%Y-%m-%d')
-        name: $(date +'%Y-%m-%d')
