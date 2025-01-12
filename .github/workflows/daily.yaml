@@ -49,4 +49,4 @@ jobs:
         artifacts: "Hindustan-Dhanbad.pdf"
         artifactContentType: "application/pdf"
         tag: $(date +'%Y-%m-%d')
-        releaseName: $(date +'%Y-%m-%d')
+        name: $(date +'%Y-%m-%d')
