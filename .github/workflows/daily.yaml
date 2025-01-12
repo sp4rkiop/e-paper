@@ -43,10 +43,13 @@ jobs:
         path: Hindustan-Dhanbad.pdf
 
     - name: Create release and upload PDF
-      uses: ncipollo/release-action@v1
+      id: create_release
+        run: |
+          TAG_NAME=$(date +'%Y-%m-%d')
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+      uses: ncipollo/release-action@v1 #make sure to do this - https://github.com/ncipollo/release-action/issues/129#issuecomment-1117290255
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        tag: $(date +'%Y-%m-%d')
+        tag: ${{ env.TAG_NAME }}
         allowUpdates: true
         artifacts: "Hindustan-Dhanbad.pdf"
         artifactContentType: "application/pdf"
