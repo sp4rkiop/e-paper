@@ -48,5 +48,5 @@ jobs:
         allowUpdates: true
         artifacts: "Hindustan-Dhanbad.pdf"
         artifactContentType: "application/pdf"
-        tag: ${{ github.event.schedule ? format('yyyy-MM-dd', github.event.date) : format('yyyy-MM-dd', github.event.date) }}
-        releaseName: ${{ github.event.schedule ? format('yyyy-MM-dd', github.event.date) : format('yyyy-MM-dd', github.event.date) }}
+        tag: $(date +'%Y-%m-%d')
+        releaseName: $(date +'%Y-%m-%d')
