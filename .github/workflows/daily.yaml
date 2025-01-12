@@ -42,11 +42,13 @@ jobs:
         name: hindustan-pdf
         path: Hindustan-Dhanbad.pdf
 
-    - name: Create release and upload PDF
+    - name: Create release
       id: create_release
       run: |
         TAG_NAME=$(date +'%Y-%m-%d')
         echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+
+    - name: Upload Release
       uses: ncipollo/release-action@v1 #make sure to do this - https://github.com/ncipollo/release-action/issues/129#issuecomment-1117290255
       with:
         tag: ${{ env.TAG_NAME }}
