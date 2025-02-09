@@ -21,10 +21,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r extractors/requirements.txt
 
     - name: Run script
-      run: python hindustan.py
+      run: python extractors/hindustan.py
 
     # - name: Add & Commit changes
     #   uses: EndBug/add-and-commit@v9.1.4
@@ -37,7 +37,7 @@ jobs:
     #     push: "true"
 
     - name: Upload PDF as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: hindustan-pdf
         path: Hindustan-Dhanbad.pdf
