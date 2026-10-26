@@ -102,10 +102,8 @@ function PageCanvas({ doc, number, renderToken }: { doc: PDFDocumentProxy; numbe
   );
 }
 
-export default function Viewer() {
-  const [dates, setDates] = useState<string[]>([]);
-  const [date, setDate] = useState("");
-  const [loading, setLoading] = useState(false);
+function Edition({ date }: { date: string }) {
+  const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
   const [phase, setPhase] = useState<"download" | "parse">("download");
   const [error, setError] = useState<string | null>(null);
@@ -115,38 +113,16 @@ export default function Viewer() {
   const [currentPage, setCurrentPage] = useState(1);
   const [zoomIdx, setZoomIdx] = useState(DEFAULT_ZOOM_IDX);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const blobUrlRef = useRef<string | null>(null);
+  const oldBlobUrlRef = useRef<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const resizeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=100", {
-      headers: { Accept: "application/vnd.github+json" },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-      .then((list: { tag_name?: string }[]) => {
-        const tags = list
-          .map((r) => r.tag_name)
-          .filter((t): t is string => Boolean(t))
-          .sort()
-          .reverse();
-        setDates(tags);
-        if (tags.length > 0) setDate(tags[0]);
-      })
-      .catch(() => setError("Could not read the list of editions from GitHub."));
-  }, []);
-
-  useEffect(() => {
-    if (!date) return;
     const ac = new AbortController();
-    setDoc(null);
-    setLoading(true);
-    setError(null);
-    setProgress(0);
-    setPhase("download");
     (async () => {
       try {
         const res = await fetch("/api/proxy?date=" + date, { signal: ac.signal });
@@ -160,8 +136,9 @@ export default function Viewer() {
         if (ac.signal.aborted) return;
         setPhase("parse");
         const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
-        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = URL.createObjectURL(blob);
+        if (oldBlobUrlRef.current) URL.revokeObjectURL(oldBlobUrlRef.current);
+        oldBlobUrlRef.current = URL.createObjectURL(blob);
+        setBlobUrl(oldBlobUrlRef.current);
         const pdfjs = await getPdfJs();
         const loaded = await pdfjs.getDocument({ data: bytes }).promise;
         if (ac.signal.aborted) {
@@ -184,31 +161,31 @@ export default function Viewer() {
         if (!ac.signal.aborted) setLoading(false);
       }
     })();
-    return () => {
-      ac.abort();
-      setDoc(null);
-    };
+    return () => ac.abort();
   }, [date]);
+
+  useEffect(() => {
+    const url = oldBlobUrlRef.current;
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => {
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
-      resizeTimerRef.current = setTimeout(() => setContainerWidth(el.clientWidth), 160);
+      resizeTimerRef.current = setTimeout(
+        () => requestAnimationFrame(() => setContainerWidth(el.clientWidth)),
+        160,
+      );
     });
     ro.observe(el);
-    setContainerWidth(el.clientWidth);
+    requestAnimationFrame(() => setContainerWidth(el.clientWidth));
     return () => {
       ro.disconnect();
       if (resizeTimerRef.current) clearTimeout(resizeTimerRef.current);
-    };
-  }, [doc]);
-
-  useEffect(() => {
-    const url = blobUrlRef.current;
-    return () => {
-      if (url) URL.revokeObjectURL(url);
     };
   }, []);
 
@@ -273,29 +250,15 @@ export default function Viewer() {
     "shrink-0 rounded bg-neutral-800 px-2 py-1 text-xs font-medium hover:bg-neutral-700 active:bg-neutral-600 disabled:opacity-40";
 
   return (
-    <div className="flex h-dvh flex-col bg-neutral-950 text-neutral-100">
-      <header className="z-10 flex h-12 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-neutral-800 bg-neutral-900 px-2">
-        <span className="px-1 text-sm font-semibold tracking-tight">Dhanbad</span>
-        <select
-          aria-label="Edition date"
-          className="rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-100"
-          value={date || ""}
-          onChange={(e) => setDate(e.target.value)}
-          disabled={loading || dates.length === 0}
-        >
-          {dates.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-        <button className={btn} disabled={!doc || currentPage <= 1} onClick={() => gotoPage(currentPage - 1)}>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex h-9 shrink-0 items-center gap-2 overflow-x-auto whitespace-nowrap border-b border-neutral-800 bg-neutral-900 px-2">
+        <button className={btn} disabled={loading || currentPage <= 1} onClick={() => gotoPage(currentPage - 1)}>
           ‹
         </button>
         <span className="text-xs text-neutral-300" data-testid="page-counter">
-          {doc ? currentPage + " / " + pageCount : "—"}
+          {doc && !loading ? currentPage + " / " + pageCount : "—"}
         </span>
-        <button className={btn} disabled={!doc || (pageCount > 0 && currentPage >= pageCount)} onClick={() => gotoPage(currentPage + 1)}>
+        <button className={btn} disabled={loading || (pageCount > 0 && currentPage >= pageCount)} onClick={() => gotoPage(currentPage + 1)}>
           ›
         </button>
         <div className="grow" />
@@ -306,30 +269,31 @@ export default function Viewer() {
         <button className={btn} disabled={!doc || zoomIdx >= ZOOM_LEVELS.length - 1} onClick={() => setZoomIdx(zoomIdx + 1)}>
           +
         </button>
+        <div className="grow" />
         <button
           className={btn}
-          disabled={!blobUrlRef.current}
+          disabled={!blobUrl}
           onClick={() => {
-            if (!blobUrlRef.current) return;
+            if (!blobUrl) return;
             const a = document.createElement("a");
-            a.href = blobUrlRef.current;
+            a.href = blobUrl;
             a.download = "Hindustan-Dhanbad-" + date + ".pdf";
             a.click();
           }}
         >
           Download
         </button>
-        <button className={btn} disabled={!date} onClick={share}>
+        <button className={btn} onClick={share}>
           Share
         </button>
-      </header>
+      </div>
 
-      <main ref={scrollRef} className="relative flex-1 overflow-auto overscroll-contain">
+      <main ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto overscroll-contain">
         {doc && (
           <div className="flex min-h-full w-max min-w-full flex-col items-center gap-4 px-3 py-4">
             {Array.from({ length: pageCount }, (_, i) => (
               <div
-                key={loadTokenKey(date, i + 1, pageWidth)}
+                key={date + "-" + (i + 1) + "-" + pageWidth}
                 ref={(node) => {
                   pageRefs.current[i] = node;
                 }}
@@ -375,6 +339,47 @@ export default function Viewer() {
   );
 }
 
-function loadTokenKey(date: string, page: number, width: number): string {
-  return date + "-" + page + "-" + width;
+export default function Viewer() {
+  const [dates, setDates] = useState<string[]>([]);
+  const [date, setDate] = useState("");
+
+  useEffect(() => {
+    fetch("https://api.github.com/repos/" + REPO + "/releases?per_page=100", {
+      headers: { Accept: "application/vnd.github+json" },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((list: { tag_name?: string }[]) => {
+        const tags = list
+          .map((r) => r.tag_name)
+          .filter((t): t is string => Boolean(t))
+          .sort()
+          .reverse();
+        setDates(tags);
+        if (tags.length > 0) setDate(tags[0]);
+      })
+      .catch(() => setDate("__failed__"));
+  }, []);
+
+  return (
+    <div className="flex h-dvh flex-col bg-neutral-950 text-neutral-100">
+      <header className="z-10 flex h-12 shrink-0 items-center gap-2 border-b border-neutral-800 bg-neutral-900 px-2">
+        <span className="px-1 text-sm font-semibold tracking-tight">Dhanbad</span>
+        <select
+          aria-label="Edition date"
+          className="rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-100"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          disabled={dates.length === 0}
+        >
+          {date === "__failed__" && <option value="__failed__">No editions found</option>}
+          {dates.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </header>
+      {date && date !== "__failed__" && <Edition key={date} date={date} />}
+    </div>
+  );
 }
