@@ -23,8 +23,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r extractors/requirements.txt
 
+    - name: Set date
+      run: |
+        TAG_NAME=$(date +'%Y-%m-%d')
+        echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+
     - name: Run script
-      run: python extractors/hindustan.py
+      run: python extractors/hindustan.py ${{ env.TAG_NAME }} --full
 
     # - name: Add & Commit changes
     #   uses: EndBug/add-and-commit@v9.1.4
@@ -42,17 +47,11 @@ jobs:
         name: hindustan-pdf
         path: Hindustan-Dhanbad.pdf
 
-    - name: Create release
-      id: create_release
-      run: |
-        TAG_NAME=$(date +'%Y-%m-%d')
-        echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
-
     - name: Upload Release
       uses: ncipollo/release-action@v1 #make sure to do this - https://github.com/ncipollo/release-action/issues/129#issuecomment-1117290255
       with:
         tag: ${{ env.TAG_NAME }}
         allowUpdates: true
         body: "Automated release for ${{ env.TAG_NAME }}"
-        artifacts: "Hindustan-Dhanbad.pdf"
+        artifacts: "Hindustan-Dhanbad.pdf,Hindustan-Dhanbad-Full.pdf"
         artifactContentType: "application/pdf"
