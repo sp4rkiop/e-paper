@@ -13,8 +13,8 @@ HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
     )
 }
-MAX_EDGE = 1800
-JPEG_QUALITY = 80
+MAX_EDGE = 3000
+JPEG_QUALITY = 85
 
 def fetch_page_urls(date):
     """Fetch the edition page and extract all high-res page image URLs."""
